@@ -1,0 +1,176 @@
+
+
+syntax = "proto3";
+
+// 三维向量
+message PVector3 {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+// 玩家Session信息（单个玩家数据）
+message PlayerSession {
+    int64 PlayerId = 1;//唯一id
+    string PlayerName = 2;//暂时不用
+    int32 CharacterTemplateId = 3;//加载不同的职业角色用
+    int32 SkinId = 4;
+    int32 SceneId = 5;
+    PVector3 Position = 6;
+    PVector3 Rotation = 7;
+}
+
+
+
+// --------------------------（客户端→服务器）----------------------------
+message C2S_HeartPing {
+    int64 ClientTimestamp = 1; // 客户端本地时间戳（毫秒）
+}
+//注册
+message C2S_SignUp {
+    string UserName = 1;
+    string Password = 2;
+}
+//登录
+message C2S_Login {
+    string UserName = 1;
+    string Password = 2;
+}
+// 进入场景请求（客户端→服务器）
+message C2S_EnterScene {
+    int32 SceneId = 1;
+}
+// 上报移动（客户端→服务器）
+message C2S_Move {
+    int64 PlayerId = 1; 
+    PVector3 Position = 2;
+    PVector3 Rotation = 3;
+}
+// 上报两个坐标点（客户端→服务器）
+message C2S_TwoPointSync {
+    int64 PlayerId = 1;
+    PVector3 Point1 = 2;
+    PVector3 Point2 = 3;
+}
+//上报动画
+message C2S_AnimSync {
+    int64 PlayerId = 1; 
+    string AnimName = 2;
+    float CrossFadeTime = 3;
+    float AnimBlendX = 4;
+    float AnimBlendY = 5;
+    int32 AnimCode = 6; 
+    int32 ClassIndex = 7;//职业片段
+    int64 TargetId = 8;//攻击目标id
+}
+// 玩家攻击怪物（客户端→服务器）
+message C2S_MonsterHurt {
+    int64 MonsterId = 1;       // 怪物ID
+    int64 AttackerId = 2;      // 攻击者玩家ID
+    int32 CurrentHP = 3;       // 怪物当前HP（客户端预测，服务端校验）
+    int32 Damage = 4;          // 造成的伤害
+    PVector3 AttackerPos = 5;  // 攻击者位置
+
+}
+//----------------------------（服务器→客户端）---------------------------------
+message S2C_HeartPong {
+    int64 ClientTimestamp = 1; // 原封不动带回，用于算延迟
+    int64 ServerTimestamp = 2; // 服务端当前时间戳（用于时间同步/防作弊）
+    int32  OnlineCount = 3;    // 【夹带私货】当前在线人数
+    int32  ServerLoad = 4;     // 服务器CPU负载，用于提示"服务器繁忙"
+}
+//注册回包
+message S2C_SignUpResult {
+    bool Success = 1;
+    string ErrorMsg = 2;
+}
+//登录回包
+message S2C_LoginResult {
+    bool Success = 1;
+    string ErrorMsg = 2;
+    int64 AccountId = 3;
+}
+//移动包
+message S2C_MoveResult {
+    int64 PlayerId = 1; 
+    PVector3 Position = 2;
+    PVector3 Rotation = 3;
+}
+
+// 视野进入（服务器→客户端，新进入视野的玩家列表）
+message S2C_AoiEnter {
+    repeated PlayerSession Players = 1;
+}
+// 视野离开（服务器→客户端，离开视野的玩家ID列表）
+message S2C_AoiLeave {
+    repeated int64 PlayerIds = 1;
+}
+// 进入场景回包
+message S2C_EnterSceneResult {
+    bool Success = 1;
+    repeated PlayerSession Players = 2;//主角的初始信息
+}
+//上报动画
+message C2S_AnimSyncResult {
+    int64 PlayerId = 1; 
+    string AnimName = 2;
+    float CrossFadeTime = 3;
+    float AnimBlendX = 4;
+    float AnimBlendY = 5;
+    int32 AnimCode = 6; 
+    int32 ClassIndex = 7;//职业片段
+    int64 TargetId = 8;//攻击目标id
+}
+
+// ============= 怪物同步（服务器→客户端）=============
+
+// 怪物生成广播
+message S2C_MonsterSpawn {
+    int64 MonsterId = 1;
+    int32 TemplateId = 2;      // 怪物模板ID，客户端据此加载prefab
+    PVector3 Position = 3;
+    PVector3 Rotation = 4;
+    float MaxHP = 5;
+    float CurrentHP = 6;
+
+}
+
+// 怪物销毁广播
+message S2C_MonsterDespawn {
+    int64 MonsterId = 1;
+}
+
+// 怪物移动/状态广播（高频，15Hz）
+message S2C_MonsterMove {
+    int64 MonsterId = 1;
+    float CurrentHP = 2;
+    int64 TargetPlayerId = 3;  // 仇恨目标
+    PVector3 TargetPos = 4;    // AI寻路目标位置
+    float MoveSpeed = 5;       // 当前移动速度（0=静止/攻击中）
+    PVector3 Position = 6;     // 怪物当前位置
+    PVector3 Rotation = 7;     // 怪物当前朝向
+    int32 AIState = 8;         // 怪物AI状态 0=Idle 1=Chase 2=Approach 3=Attack 4=Flee
+
+
+}
+
+// 双点同步广播（服务器→其他客户端）
+message S2C_TwoPointSync {
+    int64 PlayerId = 1;
+    PVector3 Point1 = 2;
+    PVector3 Point2 = 3;
+
+}
+
+// 技能释放广播（主机→全部客户端）
+message S2C_SkillCast {
+    int64 CasterId = 1;        // 释放者ID（玩家或怪物）
+    int32 CasterType = 2;      // 0=玩家 1=怪物
+    int32 SkillId = 3;         // 技能ID
+    PVector3 TargetPos = 4;    // 目标位置
+    int64 TargetId = 5;        // 目标实体ID
+    PVector3 CasterPos = 6;    // 释放者位置（用于VFX生成）
+    int32 CasterHp = 7;        // 攻击者当前HP
+    int32 TargetHp = 8;        // 被攻击者当前HP
+    int32 Damage = 9;          // 造成的伤害
+}
+
