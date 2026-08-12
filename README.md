@@ -1,7 +1,7 @@
 # 🐈‍⬛ BlackCatRabbitServer
 
 > 基于 .NET 8 的游戏服务器端 / 通信中间件
-
+b站视频地址：https://www.bilibili.com/video/BV1Y4uq6QEs2/?spm_id_from=333.1387.homepage.video_card.click
 ## 📖 项目简介
 
 这是一个用 C# 开发的游戏服务器后端程序。主要负责处理 [玩家登录、数据持久化、战斗逻辑转发等]。项目基于 .NET 8 构建，利用 Protobuf 进行高效的数据序列化通信。
